@@ -1,35 +1,58 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState, useEffect } from 'react';
+import './App.css';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [images, setImages] = useState([]);
+  const [difficulty, setDifficulty] = useState(10);
+  // TODO: add URL state that can hold 3-4 different APIs
+  // ! PASS FETCH FUNCTIONALITY TO THE CARD CONTAINER COMPONENT, which should get the fetch url and difficulty as props
+  // TODO: add a loading... message for fetch wait (and error catching and resolver)
+
+  const changeDifficulty = (e) => {
+    setDifficulty(e.target.value);
+  };
+
+  useEffect(() => {
+    const fetchObjects = async () => {
+      const response = await fetch(
+        `https://api.collection.cooperhewitt.org/rest/?method=cooperhewitt.objects.tags.getObjects&access_token=${import.meta.env.VITE_COOPER_HEWITT_ACCESS_TOKEN}&type=poster&page=1&per_page=100`,
+      );
+      const data = await response.json();
+      const newImages = data.objects.reduce((acc, object) => {
+        if (object.images && object.images.length > 0) {
+          acc.push(object.images[0].n.url);
+        }
+        return acc;
+      }, []);
+
+      setImages(newImages);
+    };
+
+    fetchObjects();
+  }, [difficulty]);
 
   return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div>
+      <select
+        name="difficulty"
+        id="difficulty-selection"
+        onChange={changeDifficulty}
+      >
+        <option name="easy" value="10">
+          Easy
+        </option>
+        <option name="medium" value="20">
+          Medium
+        </option>
+        <option name="hard" value="30">
+          Hard
+        </option>
+      </select>
+      {images.slice(0, difficulty).map((img, index) => (
+        <img key={index} src={img} alt={`Image ${index}`} />
+      ))}
+    </div>
+  );
 }
 
-export default App
+export default App;
