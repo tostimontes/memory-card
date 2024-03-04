@@ -45,7 +45,7 @@ dialog {
   color: var(--dialog-text);
   border-radius: 0.5rem;
   height: fit-content;
-  width: max(50%, 300px);
+  width: fit-content;
   text-align: left;
   overflow: hidden;
   position: fixed;
