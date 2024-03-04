@@ -26,9 +26,6 @@ function App() {
 
   const currentScore = useRef(0);
 
-  // TODO: set dialog display to flex for first visits
-  // TODO: add a loading... message for fetch wait (and error catching and resolver)
-  // TODO: button to enable hover over images for info (make them rotateY with perspective to show their back with the poster info)
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
@@ -113,7 +110,13 @@ function App() {
   }, [imageSource]);
 
   const showInstructions = () => {
-    const dialog = document.querySelector('dialog');
+    const dialog = document.querySelector('.instructions');
+    dialog.style.display = 'flex';
+    dialog.showModal();
+  };
+
+  const showWinMessage = () => {
+    const dialog = document.querySelector('.win');
     dialog.style.display = 'flex';
     dialog.showModal();
   };
@@ -146,7 +149,10 @@ function App() {
       setClickedCards(new Set(clickedCards).add(cardId));
       currentScore.current += 1;
       if (currentScore.current === parseInt(difficulty)) {
-        
+        showWinMessage();
+        updateBestScore();
+        currentScore.current = 0;
+        setClickedCards(new Set());
       }
     }
     shuffleCards(images);
@@ -190,6 +196,7 @@ function App() {
         >
           Instructions
         </button>
+        <label htmlFor="image-selection">Image Source:</label>
         <select
           name="image-selection"
           id="image-selection"
@@ -206,6 +213,7 @@ function App() {
             Harvard Art Museum (prints)
           </option>
         </select>
+        <label htmlFor="difficulty-selection">Difficulty:</label>
         <select
           name="difficulty"
           id="difficulty-selection"
@@ -231,39 +239,80 @@ function App() {
       </aside>
       <main>
         <dialog className="instructions">
+          <div className="instructions-text-wrapper">
+            <button
+              type="button"
+              className="close-dialog"
+              onClick={closeDialog}
+            >
+              <Icon path={mdiClose} className="close-icon"></Icon>
+            </button>
+            <h2>
+              <Icon path={mdiAlert}></Icon> WARNING: any change in the dropdowns
+              will finish the current game
+            </h2>
+            <ol>
+              <li>
+                Select a <b>source</b> for the images in the image dropdown
+              </li>
+              <li>
+                Select a <b>difficulty</b> level dropdown
+                <br />
+                (Easy = 10 imgs, Medium = 20 imgs, Hard = 30 imgs)
+              </li>
+              <li>Wait for the images to display and...</li>
+              <li>Start by clicking on any image!</li>
+            </ol>
+            <hr />
+            <ul>
+              <li>
+                The goal is to click on each image <b>only once</b>.
+              </li>
+              <li>
+                After every click, the images will reorder randomly. <br />
+              </li>
+              <li>
+                If you select all the images only once, congratulations! You
+                won!
+              </li>
+              <br />
+              <Icon path={mdiExclamationThick}></Icon>
+              <i>
+                The best score reflects your best score for each image source
+                and difficulty
+              </i>
+              <hr />
+            </ul>
+            <p>
+              Image sources:
+              <ul>
+                <li>
+                  <a href="URL_for_Cooper_Hewitt">
+                    Cooper Hewitt Smithsonian Design Museum
+                  </a>{' '}
+                  (posters)
+                </li>
+                <li>
+                  <a href="URL_for_Europeana">Europeana</a> (paintings)
+                </li>
+                <li>
+                  <a href="URL_for_Harvard_Art_Museum">Harvard Art Museum</a>{' '}
+                  (prints)
+                </li>
+              </ul>
+            </p>
+          </div>
+        </dialog>
+        <dialog className="win">
           <button type="button" className="close-dialog" onClick={closeDialog}>
             <Icon path={mdiClose} className="close-icon"></Icon>
           </button>
-          <h2>
-            <Icon path={mdiAlert}></Icon> WARNING: any change in the dropdowns
-            will finish the current game
-          </h2>
-          <ol>
-            <li>Select a source for the images in the image dropdown</li>
-            <li>
-              Select a difficulty level dropdown
-              <br />
-              (Easy = 10 imgs, Medium = 20 imgs, Hard = 30 imgs)
-            </li>
-            <li>Wait for the images to display and...</li>
-            <li>Start by clicking on any image!</li>
-          </ol>
-          <hr />
-          <ul>
-            <li>The goal is to click on each image only once.</li>
-            <li>
-              After every click, the images will reorder randomly. <br />
-            </li>
-            <li>
-              If you select all the images only once, congratulations! You won!
-            </li>
-            <br />
-            <Icon path={mdiExclamationThick}></Icon>
-            <i>
-              The best score reflects your best score for each image source and
-              difficulty
-            </i>
-          </ul>
+          <p>You won!</p>
+          {parseInt(difficulty) < 30 ? (
+            <p>Try the next level!</p>
+          ) : (
+            <p>Try with another museum!</p>
+          )}
         </dialog>
         <p className="loading">{isLoading ? 'loading images...' : null}</p>
         <Grid
