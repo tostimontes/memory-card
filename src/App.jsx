@@ -14,7 +14,7 @@ function App() {
   );
 
   const [bestScores, setBestScores] = useState(() => {
-    const storedBestScores = localStorage.getItem('bestScores');
+    const storedBestScores = localStorage.getItem('bestScores') || 'undefined';
     return storedBestScores !== 'undefined' ? JSON.parse(storedBestScores) : {};
   });
 
@@ -26,7 +26,6 @@ function App() {
 
   const currentScore = useRef(0);
 
-  // TODO: set font-family depending on imagesource
   // TODO: set dialog display to flex for first visits
   // TODO: add a loading... message for fetch wait (and error catching and resolver)
   // TODO: button to enable hover over images for info (make them rotateY with perspective to show their back with the poster info)
@@ -40,6 +39,15 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
   useEffect(() => {
+    const hasVisited = localStorage.getItem('hasVisited');
+
+    if (!hasVisited) {
+      showInstructions();
+      localStorage.setItem('hasVisited', 'true');
+    }
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem('difficulty', difficulty);
   }, [difficulty]);
 
@@ -52,7 +60,7 @@ function App() {
   }, [bestScores]);
 
   useEffect(() => {
-    shuffleCards(allImages); // Shuffle the full set of images
+    shuffleCards(allImages);
   }, [difficulty, allImages]);
 
   useEffect(() => {
@@ -60,18 +68,44 @@ function App() {
       setIsLoading(true);
       const sourcesURLs = {
         cooperHewitt: `https://api.collection.cooperhewitt.org/rest/?method=cooperhewitt.objects.tags.getObjects&access_token=${import.meta.env.VITE_COOPER_HEWITT_ACCESS_TOKEN}&type=poster&page=1&per_page=100`,
+        europeana: `https://api.europeana.eu/record/v2/search.json?wskey=${import.meta.env.VITE_EUROPEANA_API_KEY}&query=painting&reusability=open&media=true&rows=50`,
+        harvard: `https://api.harvardartmuseums.org/object?apikey=${import.meta.env.VITE_HARVARD_ART_MUSEUM_API_KEY}&classification=Prints&size=75&hasimage=1`,
       };
       const response = await fetch(sourcesURLs[imageSource]);
       const data = await response.json();
-      const newImages = data.objects.reduce((acc, object) => {
-        if (object.images && object.images.length > 0) {
-          acc.push(object.images[0].n.url);
-        }
-        return acc;
-      }, []);
+
+      let newImages = [];
+
+      switch (imageSource) {
+        case 'cooperHewitt':
+          newImages = data.objects.reduce((acc, object) => {
+            if (object.images && object.images.length > 0) {
+              acc.push(object.images[0].n.url);
+            }
+            return acc;
+          }, []);
+
+          break;
+
+        case 'europeana':
+          newImages = data.items.map((item) => item.edmIsShownBy[0]);
+          break;
+        case 'harvard':
+          data.records.map((record) => {
+            if (
+              record.images &&
+              record.images.length > 0 &&
+              record.images[0].baseimageurl
+            ) {
+              newImages.push(record.images[0].baseimageurl);
+            }
+          });
+          break;
+        default:
+          break;
+      }
 
       setAllImages(newImages);
-      // shuffleCards();
       setIsLoading(false);
     };
 
@@ -111,6 +145,9 @@ function App() {
     } else {
       setClickedCards(new Set(clickedCards).add(cardId));
       currentScore.current += 1;
+      if (currentScore.current === parseInt(difficulty)) {
+        
+      }
     }
     shuffleCards(images);
   };
@@ -160,7 +197,13 @@ function App() {
           value={imageSource}
         >
           <option name="cooper-hewitt" value="cooperHewitt">
-            Cooper Hewitt
+            Cooper Hewitt (Smithsonian Design Museumm) (posters)
+          </option>
+          <option name="europeana" value="europeana">
+            Europeana (paintings)
+          </option>
+          <option name="harvard" value="harvard">
+            Harvard Art Museum (prints)
           </option>
         </select>
         <select
