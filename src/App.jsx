@@ -6,26 +6,76 @@ import { mdiAlert, mdiClose, mdiExclamationThick } from '@mdi/js';
 
 function App() {
   const [imageSource, setImageSource] = useState(
-    localStorage.getItem('imageSource') || 'cooper-hewitt',
+    localStorage.getItem('imageSource') || 'cooperHewitt',
   );
 
   const [difficulty, setDifficulty] = useState(
     localStorage.getItem('difficulty') || 10,
   );
 
-  const [bestScores, setBestScores] = useState({});
+  const [bestScores, setBestScores] = useState(() => {
+    const storedBestScores = localStorage.getItem('bestScores');
+    return storedBestScores !== 'undefined' ? JSON.parse(storedBestScores) : {};
+  });
+
+  const [clickedCards, setClickedCards] = useState(new Set());
+  const [allImages, setAllImages] = useState([]);
+
+  const [images, setImages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const currentScore = useRef(0);
 
   // TODO: set font-family depending on imagesource
   // TODO: set dialog display to flex for first visits
   // TODO: add a loading... message for fetch wait (and error catching and resolver)
+  // TODO: button to enable hover over images for info (make them rotateY with perspective to show their back with the poster info)
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        closeDialog();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
   useEffect(() => {
     localStorage.setItem('difficulty', difficulty);
   }, [difficulty]);
 
   useEffect(() => {
     localStorage.setItem('imageSource', imageSource);
+  }, [imageSource]);
+
+  useEffect(() => {
+    localStorage.setItem('bestScores', JSON.stringify(bestScores));
+  }, [bestScores]);
+
+  useEffect(() => {
+    shuffleCards(allImages); // Shuffle the full set of images
+  }, [difficulty, allImages]);
+
+  useEffect(() => {
+    const fetchObjects = async () => {
+      setIsLoading(true);
+      const sourcesURLs = {
+        cooperHewitt: `https://api.collection.cooperhewitt.org/rest/?method=cooperhewitt.objects.tags.getObjects&access_token=${import.meta.env.VITE_COOPER_HEWITT_ACCESS_TOKEN}&type=poster&page=1&per_page=100`,
+      };
+      const response = await fetch(sourcesURLs[imageSource]);
+      const data = await response.json();
+      const newImages = data.objects.reduce((acc, object) => {
+        if (object.images && object.images.length > 0) {
+          acc.push(object.images[0].n.url);
+        }
+        return acc;
+      }, []);
+
+      setAllImages(newImages);
+      // shuffleCards();
+      setIsLoading(false);
+    };
+
+    fetchObjects();
   }, [imageSource]);
 
   const showInstructions = () => {
@@ -45,7 +95,42 @@ function App() {
   };
 
   const changeDifficulty = (e) => {
+    currentScore.current = 0;
     setDifficulty(e.target.value);
+    e.target.value === '30'
+      ? (document.querySelector('.cards-grid').style.gridTemplateColumns =
+          'repeat(6, 1fr)')
+      : (document.querySelector('.cards-grid').style.gridTemplateColumns =
+          'repeat(5, 1fr)');
+  };
+  const handleCardClick = (cardId) => {
+    if (clickedCards.has(cardId)) {
+      updateBestScore();
+      currentScore.current = 0;
+      setClickedCards(new Set());
+    } else {
+      setClickedCards(new Set(clickedCards).add(cardId));
+      currentScore.current += 1;
+    }
+    shuffleCards(images);
+  };
+
+  const shuffleCards = (fullImageSet) => {
+    const grid = document.querySelector('.cards-grid');
+    grid.classList.add('shuffle');
+
+    setTimeout(() => {
+      let shuffledImages = [...fullImageSet];
+      for (let i = shuffledImages.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledImages[i], shuffledImages[j]] = [
+          shuffledImages[j],
+          shuffledImages[i],
+        ];
+      }
+      setImages(shuffledImages.slice(0, difficulty));
+      grid.classList.remove('shuffle');
+    }, 500);
   };
 
   const updateBestScore = () => {
@@ -54,6 +139,7 @@ function App() {
     if (currentScore.current > currentBest) {
       setBestScores({ ...bestScores, [key]: currentScore.current });
     }
+    console.log(bestScores);
   };
 
   return (
@@ -73,7 +159,7 @@ function App() {
           onChange={fetchImages}
           value={imageSource}
         >
-          <option name="cooper-hewitt" value="cooper-hewitt">
+          <option name="cooper-hewitt" value="cooperHewitt">
             Cooper Hewitt
           </option>
         </select>
@@ -96,7 +182,7 @@ function App() {
         <div className="scoreboard">
           <p className="current-score">Current score: {currentScore.current}</p>
           <p className="best-score">
-            Best score: {bestScores[`${imageSource}-${difficulty}`]}
+            Best score: {bestScores[`${imageSource}-${difficulty}`] || 0}
           </p>
         </div>
       </aside>
@@ -136,7 +222,11 @@ function App() {
             </i>
           </ul>
         </dialog>
-        <Grid difficulty={difficulty} imagesSource={imageSource}></Grid>
+        <p className="loading">{isLoading ? 'loading images...' : null}</p>
+        <Grid
+          images={images.slice(0, difficulty)}
+          onCardClick={handleCardClick}
+        ></Grid>
       </main>
     </>
   );

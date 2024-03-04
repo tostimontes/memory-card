@@ -6,7 +6,7 @@
 }
 
 :root {
-  --sidebar-size: 25%;
+  --sidebar-size: 15%;
   --grid-size: calc(100% - var(--sidebar-size));
   --aside-background-color: #bb8d1a;
   --buttons-background-color: #544319;
@@ -16,6 +16,7 @@
 #root {
   text-align: center;
   height: 100vh;
+  display: flex;
 }
 
 aside {
@@ -27,7 +28,9 @@ aside {
   padding: 0.5rem;
   gap: 0.5rem;
   height: 100vh;
-  background-color: var(--aside-background-color)
+  background-color: var(--aside-background-color);
+  box-shadow: 1px 0px 5px 3px rgb(169, 156, 156);
+  z-index: 1;
 }
 
 dialog {
@@ -42,7 +45,7 @@ dialog {
   border-radius: 0.5rem;
   height: max(75%, 300px);
   width: max(50%, 300px);
-    text-align: left;
+  text-align: left;
 
   position: fixed;
   top: 50%;
@@ -56,7 +59,7 @@ dialog {
     background-color: var(--buttons-background-color);
     border-radius: 30%;
     align-self: flex-end;
-    cursor: pointer;  
+    cursor: pointer;
   }
   > h2 {
     text-align: center;
@@ -76,6 +79,14 @@ dialog {
   }
 }
 
+p.loading {
+  font-size: 1.5rem;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(calc(-50% + var(--sidebar-size)), -50%);
+}
+
 h1 {
   font-size: 2rem;
 }
@@ -83,17 +94,28 @@ h1 {
 main {
   width: var(--grid-size);
   height: 100vh;
+  background-color: rgb(199, 199, 199);
 }
 
 .cards-grid {
   width: 100%;
+  height: 100vh;
+  padding: 0.5rem;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 0.1rem;
+  grid-auto-rows: minmax(0, 1fr);
+  gap: 0.2rem;
+  opacity: 1;
+  transition: opacity 0.5s ease-in-out;
+}
+
+.cards-grid.shuffle {
+  opacity: 0;
 }
 
 img {
   width: 100%;
-  height: auto;
-  object-fit: cover;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 0.5rem;
 }
