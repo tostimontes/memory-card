@@ -5,12 +5,95 @@
   font-family: 'Inter', sans-serif;
 }
 
+:root {
+  --sidebar-size: 25%;
+  --grid-size: calc(100% - var(--sidebar-size));
+  --aside-background-color: #bb8d1a;
+  --buttons-background-color: #544319;
+  --dialog-text: rgb(47, 47, 47);
+}
+
 #root {
   text-align: center;
+  height: 100vh;
+}
+
+aside {
+  width: var(--sidebar-size);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 0.5rem;
+  gap: 0.5rem;
+  height: 100vh;
+  background-color: var(--aside-background-color)
+}
+
+dialog {
+  border: none;
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: start;
+  background-color: var(--aside-background-color);
+  color: var(--dialog-text);
+  padding: 3.5rem;
+  border-radius: 0.5rem;
+  height: max(75%, 300px);
+  width: max(50%, 300px);
+    text-align: left;
+
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(calc(-50% + var(--sidebar-size)), -50%);
+  > button {
+    width: 3rem;
+    height: 3rem;
+    border: none;
+    color: whitesmoke;
+    background-color: var(--buttons-background-color);
+    border-radius: 30%;
+    align-self: flex-end;
+    cursor: pointer;  
+  }
+  > h2 {
+    text-align: center;
+    font-size: 1.2rem;
+  }
+  & hr {
+    width: 100%;
+    margin: 0.5rem 0;
+    height: 0.5rem;
+    background-color: var(--dialog-text);
+    border: none;
+  }
+  & svg:not(.close-icon) {
+    padding-top: 0.25rem;
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+}
+
+h1 {
+  font-size: 2rem;
+}
+
+main {
+  width: var(--grid-size);
+  height: 100vh;
+}
+
+.cards-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.1rem;
 }
 
 img {
-  width: 10rem;
-  height: 10rem;
+  width: 100%;
+  height: auto;
   object-fit: cover;
 }
