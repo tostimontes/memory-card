@@ -3,12 +3,12 @@ import Card from './Card';
 export default function Grid({ images, onCardClick, isInfoMode }) {
   return (
     <div className="cards-grid">
-      {images.map((img) => (
+      {images.map((imgInfo) => (
         <Card
-          key={img}
-          source={img}
-          alt=""
-          onClick={() => onCardClick(img)}
+          key={imgInfo.imageUrl}
+          source={imgInfo.imageUrl}
+          onClick={() => onCardClick(imgInfo.imageUrl)}
+          info={imgInfo}
           isInfoMode={isInfoMode}
         />
       ))}

@@ -99,12 +99,33 @@ function App() {
       const data = await response.json();
 
       let fetchedImages = [];
+      let fetchedInfo = {};
 
       switch (imageSource) {
         case 'cooperHewitt':
           fetchedImages = data.objects.reduce((acc, object) => {
-            if (object.images && object.images.length > 0) {
-              acc.push(object.images[0].n.url);
+            if (
+              object.images &&
+              object.images.length > 0 &&
+              object.title &&
+              object.url &&
+              object.medium &&
+              object.dimensions &&
+              object.date &&
+              object.creditline
+            ) {
+              const cmDimensions = object.dimensions.match(/.*cm/)?.[0].trim();
+              const imageInfo = {
+                imageUrl: object.images[0].n.url,
+                title: object.title,
+                url: object.url,
+                medium: object.medium,
+                dimensions: cmDimensions || object.dimensions,
+                date: object.date,
+                creditline: object.creditline,
+              };
+
+              acc.push(imageInfo);
             }
             return acc;
           }, []);
