@@ -10,6 +10,7 @@ The Memory Card Game is a project developed as part of The Odin Project's React 
 - **Difficulty Levels**: Players can choose between Easy (10 images), Medium (20 images), and Hard (30 images) levels.
 - **Score Tracking**: The game tracks the current and best scores for each combination of image source and difficulty level.
 - **Responsive Design**: Implements a user-friendly interface with modals and a dynamic grid layout.
+- **Image Info Mode**: The Image Info Mode serves as an educational tool, enhancing the user's experience by providing context and background about each image when hovering over any image, as well as a link to the image's source to explore further.
 
 ## Technical Implementation
 
@@ -26,7 +27,6 @@ _Feel free to play at [**Museum Memory Game**](https://memory-card-omega-five.ve
 
 ## Additional Features (Planned)
 
-- **Flip Cards on Hover**: Implementing a feature to show artwork details on hover, enhancing the educational aspect of the game.
 - **More Image Sources**: Adding more museums and artwork types to diversify the game experience.
 
 ## Credits and Image Sources
