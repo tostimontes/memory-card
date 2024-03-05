@@ -31,13 +31,15 @@ function App() {
   const [images, setImages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isInfoMode, setIsInfoMode] = useState(false);
+  const [isClickable, setIsClickable] = useState(true);
 
   const currentScore = useRef(0);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
-        closeDialog();
+        closeDialog('win');
+        closeDialog('instructions');
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -99,98 +101,121 @@ function App() {
     }
 
     const fetchObjects = async () => {
-      setIsLoading(true);
-      const sourcesURLs = {
-        cooperHewitt: `https://api.collection.cooperhewitt.org/rest/?method=cooperhewitt.objects.tags.getObjects&access_token=${import.meta.env.VITE_COOPER_HEWITT_ACCESS_TOKEN}&type=poster&page=1&per_page=100`,
-        europeana: `https://api.europeana.eu/record/v2/search.json?wskey=${import.meta.env.VITE_EUROPEANA_API_KEY}&query=painting&reusability=open&media=true&rows=100`,
-        harvard: `https://api.harvardartmuseums.org/object?apikey=${import.meta.env.VITE_HARVARD_ART_MUSEUM_API_KEY}&classification=Prints&size=100&hasimage=1`,
-      };
-      const response = await fetch(sourcesURLs[imageSource]);
-      const data = await response.json();
+      setIsClickable(false);
 
-      let fetchedImages = [];
+      let fetchedImages = sessionStorage.getItem(imageSource) || [];
+      if (fetchedImages.length > 0) {
+        fetchedImages = JSON.parse(fetchedImages);
+        setImages([]);
+        setIsLoading(true);
+        document.querySelector('.loading').classList.add('active');
+        setTimeout(() => {
+          setAllImages(fetchedImages);
+          setIsLoading(false);
+          document.querySelector('.loading').classList.remove('active');
+          setIsClickable(true);
+        }, 500);
+      } else {
+        document.querySelector('.loading').classList.add('active');
+        setIsLoading(true);
+        setImages([]);
 
-      switch (imageSource) {
-        case 'cooperHewitt':
-          fetchedImages = data.objects.reduce((acc, object) => {
-            if (
-              object.images &&
-              object.images.length > 0 &&
-              object.title &&
-              object.url &&
-              object.medium &&
-              object.dimensions &&
-              object.date &&
-              object.creditline
-            ) {
-              const cmDimensions = object.dimensions.match(/.*cm/)?.[0].trim();
+        const sourcesURLs = {
+          cooperHewitt: `https://api.collection.cooperhewitt.org/rest/?method=cooperhewitt.objects.tags.getObjects&access_token=${import.meta.env.VITE_COOPER_HEWITT_ACCESS_TOKEN}&type=poster&page=1&per_page=100`,
+          europeana: `https://api.europeana.eu/record/v2/search.json?wskey=${import.meta.env.VITE_EUROPEANA_API_KEY}&query=painting&reusability=open&media=true&rows=100`,
+          harvard: `https://api.harvardartmuseums.org/object?apikey=${import.meta.env.VITE_HARVARD_ART_MUSEUM_API_KEY}&classification=Prints&size=100&hasimage=1`,
+        };
+        const response = await fetch(sourcesURLs[imageSource]);
+        const data = await response.json();
+
+        switch (imageSource) {
+          case 'cooperHewitt':
+            fetchedImages = data.objects.reduce((acc, object) => {
+              if (
+                object.images &&
+                object.images.length > 0 &&
+                object.title &&
+                object.url &&
+                object.medium &&
+                object.dimensions &&
+                object.date &&
+                object.creditline
+              ) {
+                const cmDimensions = object.dimensions
+                  .match(/.*cm/)?.[0]
+                  .trim();
+                const imageInfo = {
+                  imageUrl: object.images[0].n.url,
+                  title: object.title,
+                  url: object.url,
+                  medium: object.medium,
+                  dimensions: cmDimensions || object.dimensions,
+                  date: object.date,
+                  creditline: object.creditline,
+                };
+
+                acc.push(imageInfo);
+              }
+              return acc;
+            }, []);
+            break;
+          case 'europeana':
+            for (const item of data.items) {
               const imageInfo = {
-                imageUrl: object.images[0].n.url,
-                title: object.title,
-                url: object.url,
-                medium: object.medium,
-                dimensions: cmDimensions || object.dimensions,
-                date: object.date,
-                creditline: object.creditline,
+                imageUrl: item.edmIsShownBy ? item.edmIsShownBy[0] : '',
+                url: item.edmIsShownAt ? item.edmIsShownAt[0] : '',
+                location:
+                  item.dataProvider && item.country
+                    ? `${item.dataProvider[0]}, ${item.country[0]}`
+                    : '',
+                creator:
+                  item.dcCreatorLangAware?.en?.[0] ||
+                  item.dcCreatorLangAware?.def?.[0] ||
+                  '',
               };
-
-              acc.push(imageInfo);
-            }
-            return acc;
-          }, []);
-          break;
-        case 'europeana':
-          for (const item of data.items) {
-            const imageInfo = {
-              imageUrl: item.edmIsShownBy ? item.edmIsShownBy[0] : '',
-              url: item.edmIsShownAt ? item.edmIsShownAt[0] : '',
-              location:
-                item.dataProvider && item.country
-                  ? `${item.dataProvider[0]}, ${item.country[0]}`
-                  : '',
-              creator:
-                item.dcCreatorLangAware?.en?.[0] ||
-                item.dcCreatorLangAware?.def?.[0] ||
-                '',
-            };
-            if (await isValidImage(imageInfo.imageUrl)) {
-              fetchedImages.push(imageInfo);
-            }
-          }
-          break;
-        case 'harvard':
-          for (const record of data.records) {
-            if (
-              record.images &&
-              record.images.length > 0 &&
-              record.images[0].baseimageurl
-            ) {
-              const cmDimensions = record.dimensions
-                ? record.dimensions.match(/.*cm/)?.[0].trim()
-                : '';
-              const imageInfo = {
-                imageUrl: record.images[0].baseimageurl,
-                title: record.title || '',
-                url: record.url || '',
-                technique: record.technique || '',
-                dimensions: cmDimensions || record.dimensions || '',
-                date: record.dateend || '',
-                creditline: record.creditline || '',
-              };
-
               if (await isValidImage(imageInfo.imageUrl)) {
                 fetchedImages.push(imageInfo);
               }
             }
-          }
-          break;
+            break;
+          case 'harvard':
+            for (const record of data.records) {
+              if (
+                record.images &&
+                record.images.length > 0 &&
+                record.images[0].baseimageurl
+              ) {
+                const cmDimensions = record.dimensions
+                  ? record.dimensions.match(/.*cm/)?.[0].trim()
+                  : '';
+                const imageInfo = {
+                  imageUrl: record.images[0].baseimageurl,
+                  title: record.title || '',
+                  url: record.url || '',
+                  technique: record.technique || '',
+                  dimensions: cmDimensions || record.dimensions || '',
+                  date: record.dateend || '',
+                  creditline: record.creditline || '',
+                };
 
-        default:
-          break;
+                if (await isValidImage(imageInfo.imageUrl)) {
+                  fetchedImages.push(imageInfo);
+                }
+              }
+            }
+            break;
+
+          default:
+            break;
+        }
+
+        sessionStorage.setItem(imageSource, JSON.stringify(fetchedImages));
+        setAllImages(fetchedImages);
+        setIsLoading(false);
+        document.querySelector('.loading').classList.remove('active');
+
+        setIsClickable(true);
       }
-
-      setAllImages(fetchedImages);
-      setIsLoading(false);
     };
 
     fetchObjects();
@@ -208,8 +233,8 @@ function App() {
     dialog.showModal();
   };
 
-  const closeDialog = () => {
-    const dialog = document.querySelector('dialog');
+  const closeDialog = (dialogClass) => {
+    const dialog = document.querySelector(`.${dialogClass}`);
     dialog.style.display = 'none';
     dialog.close();
   };
@@ -228,6 +253,7 @@ function App() {
           'repeat(5, 1fr)');
   };
   const handleCardClick = (cardId) => {
+    if (!isClickable) return;
     if (clickedCards.has(cardId)) {
       updateBestScore();
       currentScore.current = 0;
@@ -246,6 +272,7 @@ function App() {
   };
 
   const shuffleCards = (fullImageSet) => {
+    setIsClickable(false); // Disable clicks during shuffling
     const grid = document.querySelector('.cards-grid');
     grid.classList.add('shuffle');
 
@@ -260,6 +287,7 @@ function App() {
       }
       setImages(shuffledImages.slice(0, difficulty));
       grid.classList.remove('shuffle');
+      setIsClickable(true); // Re-enable clicks after shuffling
     }, 500);
   };
 
@@ -337,7 +365,7 @@ function App() {
             <button
               type="button"
               className="close-dialog"
-              onClick={closeDialog}
+              onClick={() => closeDialog('instructions')}
             >
               <Icon path={mdiClose} className="close-icon"></Icon>
             </button>
@@ -405,7 +433,11 @@ function App() {
           </div>
         </dialog>
         <dialog className="win">
-          <button type="button" className="close-dialog" onClick={closeDialog}>
+          <button
+            type="button"
+            className="close-dialog"
+            onClick={() => closeDialog('win')}
+          >
             <Icon path={mdiClose} className="close-icon"></Icon>
           </button>
           <p>You won!</p>
@@ -415,7 +447,7 @@ function App() {
             <p>Try with another museum!</p>
           )}
         </dialog>
-        <p className="loading">{isLoading ? 'loading images...' : null}</p>
+        <p className="loading">{isLoading ? 'loading images' : null}</p>
         <Grid
           images={images.slice(0, difficulty)}
           onCardClick={isInfoMode ? null : handleCardClick}
