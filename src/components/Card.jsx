@@ -106,7 +106,9 @@ export default function Card({
               {info.title}
             </a>
             <p ref={mediumRef}>
-              {info.technique ? `${info.technique}, ` : ''}
+              {info.technique && info.technique !== 'undefined'
+                ? `${info.technique}, `
+                : ''}
               {info.date}
             </p>
             <p ref={dimensionsRef}>{info.dimensions}</p>
