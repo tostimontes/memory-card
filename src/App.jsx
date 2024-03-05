@@ -4,6 +4,9 @@ import Grid from './components/Grid';
 import Icon from '@mdi/react';
 import { mdiAlert, mdiClose, mdiExclamationThick } from '@mdi/js';
 
+// TODO: set an error message if not enough images (like choose another museum)
+// TODO: get text and urls so that users can visit the link and set rotation with perspective (press SPACE to enter hover mode)
+
 function App() {
   const [imageSource, setImageSource] = useState(
     localStorage.getItem('imageSource') || 'cooperHewitt',
@@ -23,6 +26,7 @@ function App() {
 
   const [images, setImages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInfoMode, setIsInfoMode] = useState(false);
 
   const currentScore = useRef(0);
 
@@ -35,6 +39,20 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === ' ') {
+        handleSpaceKeyPress();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   useEffect(() => {
     const hasVisited = localStorage.getItem('hasVisited');
 
@@ -61,48 +79,63 @@ function App() {
   }, [difficulty, allImages]);
 
   useEffect(() => {
+    async function isValidImage(url) {
+      try {
+        const response = await fetch(url, { method: 'HEAD' });
+        return response.ok;
+      } catch (error) {
+        return false;
+      }
+    }
+
     const fetchObjects = async () => {
       setIsLoading(true);
       const sourcesURLs = {
         cooperHewitt: `https://api.collection.cooperhewitt.org/rest/?method=cooperhewitt.objects.tags.getObjects&access_token=${import.meta.env.VITE_COOPER_HEWITT_ACCESS_TOKEN}&type=poster&page=1&per_page=100`,
-        europeana: `https://api.europeana.eu/record/v2/search.json?wskey=${import.meta.env.VITE_EUROPEANA_API_KEY}&query=painting&reusability=open&media=true&rows=50`,
-        harvard: `https://api.harvardartmuseums.org/object?apikey=${import.meta.env.VITE_HARVARD_ART_MUSEUM_API_KEY}&classification=Prints&size=75&hasimage=1`,
+        europeana: `https://api.europeana.eu/record/v2/search.json?wskey=${import.meta.env.VITE_EUROPEANA_API_KEY}&query=painting&reusability=open&media=true&rows=100`,
+        harvard: `https://api.harvardartmuseums.org/object?apikey=${import.meta.env.VITE_HARVARD_ART_MUSEUM_API_KEY}&classification=Prints&size=100&hasimage=1`,
       };
       const response = await fetch(sourcesURLs[imageSource]);
       const data = await response.json();
 
-      let newImages = [];
+      let fetchedImages = [];
 
       switch (imageSource) {
         case 'cooperHewitt':
-          newImages = data.objects.reduce((acc, object) => {
+          fetchedImages = data.objects.reduce((acc, object) => {
             if (object.images && object.images.length > 0) {
               acc.push(object.images[0].n.url);
             }
             return acc;
           }, []);
-
           break;
-
         case 'europeana':
-          newImages = data.items.map((item) => item.edmIsShownBy[0]);
+          for (const item of data.items) {
+            const url = item.edmIsShownBy[0];
+            if (await isValidImage(url)) {
+              fetchedImages.push(url);
+            }
+          }
           break;
         case 'harvard':
-          data.records.map((record) => {
+          for (const record of data.records) {
             if (
               record.images &&
               record.images.length > 0 &&
               record.images[0].baseimageurl
             ) {
-              newImages.push(record.images[0].baseimageurl);
+              const url = record.images[0].baseimageurl;
+              if (await isValidImage(url)) {
+                fetchedImages.push(url);
+              }
             }
-          });
+          }
           break;
         default:
           break;
       }
 
-      setAllImages(newImages);
+      setAllImages(fetchedImages);
       setIsLoading(false);
     };
 
@@ -113,6 +146,10 @@ function App() {
     const dialog = document.querySelector('.instructions');
     dialog.style.display = 'flex';
     dialog.showModal();
+  };
+
+  const handleSpaceKeyPress = () => {
+    setIsInfoMode(!isInfoMode);
   };
 
   const showWinMessage = () => {
@@ -182,7 +219,6 @@ function App() {
     if (currentScore.current > currentBest) {
       setBestScores({ ...bestScores, [key]: currentScore.current });
     }
-    console.log(bestScores);
   };
 
   return (
@@ -196,6 +232,14 @@ function App() {
         >
           Instructions
         </button>
+        <button
+          className="info-button"
+          type="button"
+          onClick={handleSpaceKeyPress}
+        >
+          Toggle Image Info
+        </button>
+
         <label htmlFor="image-selection">Image Source:</label>
         <select
           name="image-selection"
@@ -283,7 +327,7 @@ function App() {
               </i>
               <hr />
             </ul>
-            <p>
+            <div>
               Image sources:
               <ul>
                 <li>
@@ -300,7 +344,7 @@ function App() {
                   (prints)
                 </li>
               </ul>
-            </p>
+            </div>
           </div>
         </dialog>
         <dialog className="win">
@@ -317,7 +361,8 @@ function App() {
         <p className="loading">{isLoading ? 'loading images...' : null}</p>
         <Grid
           images={images.slice(0, difficulty)}
-          onCardClick={handleCardClick}
+          onCardClick={isInfoMode ? null : handleCardClick}
+          isInfoMode={isInfoMode}
         ></Grid>
       </main>
     </>

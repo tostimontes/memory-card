@@ -1,6 +1,6 @@
 import Card from './Card';
 
-export default function Grid({ images, onCardClick }) {
+export default function Grid({ images, onCardClick, isInfoMode }) {
   return (
     <div className="cards-grid">
       {images.map((img) => (
@@ -9,7 +9,8 @@ export default function Grid({ images, onCardClick }) {
           source={img}
           alt=""
           onClick={() => onCardClick(img)}
-        ></Card>
+          isInfoMode={isInfoMode}
+        />
       ))}
     </div>
   );
