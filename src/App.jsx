@@ -1,11 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 import Grid from './components/Grid';
 import Icon from '@mdi/react';
-import { mdiAlert, mdiClose, mdiExclamationThick } from '@mdi/js';
+import {
+  mdiAlert,
+  mdiClose,
+  mdiExclamationThick,
+  mdiInformation,
+} from '@mdi/js';
 
-// TODO: set an error message if not enough images (like choose another museum)
-// TODO: get text and urls so that users can visit the link and set rotation with perspective (press SPACE to enter hover mode)
+// TODO: get more text ingo from other sources
 
 function App() {
   const [imageSource, setImageSource] = useState(
@@ -40,6 +44,12 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const handleSpaceKeyPress = useCallback(() => {
+    isInfoMode
+      ? document.querySelector('.info-button').classList.remove('info-mode')
+      : document.querySelector('.info-button').classList.add('info-mode');
+    setIsInfoMode(!isInfoMode);
+  });
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === ' ') {
@@ -51,7 +61,7 @@ function App() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, []);
+  }, [handleSpaceKeyPress]);
 
   useEffect(() => {
     const hasVisited = localStorage.getItem('hasVisited');
@@ -99,7 +109,6 @@ function App() {
       const data = await response.json();
 
       let fetchedImages = [];
-      let fetchedInfo = {};
 
       switch (imageSource) {
         case 'cooperHewitt':
@@ -132,9 +141,20 @@ function App() {
           break;
         case 'europeana':
           for (const item of data.items) {
-            const url = item.edmIsShownBy[0];
-            if (await isValidImage(url)) {
-              fetchedImages.push(url);
+            const imageInfo = {
+              imageUrl: item.edmIsShownBy ? item.edmIsShownBy[0] : '',
+              url: item.edmIsShownAt ? item.edmIsShownAt[0] : '',
+              location:
+                item.dataProvider && item.country
+                  ? `${item.dataProvider[0]}, ${item.country[0]}`
+                  : '',
+              creator:
+                item.dcCreatorLangAware?.en?.[0] ||
+                item.dcCreatorLangAware?.def?.[0] ||
+                '',
+            };
+            if (await isValidImage(imageInfo.imageUrl)) {
+              fetchedImages.push(imageInfo);
             }
           }
           break;
@@ -145,13 +165,26 @@ function App() {
               record.images.length > 0 &&
               record.images[0].baseimageurl
             ) {
-              const url = record.images[0].baseimageurl;
-              if (await isValidImage(url)) {
-                fetchedImages.push(url);
+              const cmDimensions = record.dimensions
+                ? record.dimensions.match(/.*cm/)?.[0].trim()
+                : '';
+              const imageInfo = {
+                imageUrl: record.images[0].baseimageurl,
+                title: record.title || '',
+                url: record.url || '',
+                technique: record.technique || '',
+                dimensions: cmDimensions || record.dimensions || '',
+                date: record.dateend || '',
+                creditline: record.creditline || '',
+              };
+
+              if (await isValidImage(imageInfo.imageUrl)) {
+                fetchedImages.push(imageInfo);
               }
             }
           }
           break;
+
         default:
           break;
       }
@@ -167,10 +200,6 @@ function App() {
     const dialog = document.querySelector('.instructions');
     dialog.style.display = 'flex';
     dialog.showModal();
-  };
-
-  const handleSpaceKeyPress = () => {
-    setIsInfoMode(!isInfoMode);
   };
 
   const showWinMessage = () => {
@@ -313,8 +342,8 @@ function App() {
               <Icon path={mdiClose} className="close-icon"></Icon>
             </button>
             <h2>
-              <Icon path={mdiAlert}></Icon> WARNING: any change in the dropdowns
-              will finish the current game
+              <Icon path={mdiAlert}></Icon> WARNING: any change of museum or
+              difficulty will finish the current game
             </h2>
             <ol>
               <li>
@@ -347,6 +376,13 @@ function App() {
                 and difficulty
               </i>
               <hr />
+              <p>
+                <Icon path={mdiInformation}></Icon> Press the <b>Spacebar</b> at
+                any time during the game to activate the
+                <b> Image Info Mode</b>. This will temporarily disable the
+                memory game's click functionality and allow you to hover over
+                each image to get information about it.
+              </p>
             </ul>
             <div>
               Image sources:
@@ -361,7 +397,7 @@ function App() {
                   <a href="URL_for_Europeana">Europeana</a> (paintings)
                 </li>
                 <li>
-                  <a href="URL_for_Harvard_Art_Museum">Harvard Art Museum</a>{' '}
+                  <a href="URL_for_Harvard_Art_Museum">Harvard Art Museums</a>{' '}
                   (prints)
                 </li>
               </ul>
@@ -384,6 +420,7 @@ function App() {
           images={images.slice(0, difficulty)}
           onCardClick={isInfoMode ? null : handleCardClick}
           isInfoMode={isInfoMode}
+          imageSource={imageSource}
         ></Grid>
       </main>
     </>
